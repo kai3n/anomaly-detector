@@ -115,7 +115,7 @@ def get_split_prep_data(train_start, train_end,
 
 def build_model():
 
-    layers = {'input': 1, 'hidden': 64, 'hidden2': 256, 'hidden3': 100, 'output': 1}
+    layers = {'input': 1, 'hidden': 128, 'hidden2': 256, 'hidden3': 100, 'output': 1}
 
     encoder = LSTM(
             input_shape=(sequence_length-1, layers['input']),
@@ -155,6 +155,7 @@ def run_network(model=None, data=None):
 
     try:
         print("Training...")
+        print(X_train.shape)
         model.fit(
                 X_train, y_train,
                 batch_size=batch_size, epochs=epochs, validation_split=0.05)
