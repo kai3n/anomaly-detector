@@ -7,7 +7,9 @@ import re
 import random
 import time
 import math
+import os
 
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
@@ -20,9 +22,9 @@ from models import EncoderRNN, DecoderRNN, AttnDecoderRNN
 
 
 use_cuda = torch.cuda.is_available()
-hidden_size = 256
+hidden_size = 200
 teacher_forcing_ratio = 0.5
-MAX_LENGTH = 50
+MAX_LENGTH = 10
 SOS_token = 0
 EOS_token = 1
 
@@ -332,7 +334,28 @@ def evaluateAndShowAttention(input_sentence):
 
 if __name__ == '__main__':
 
-    encoder1 = EncoderRNN(input_lang.n_words, hidden_size)
+    # pre-trained word embedding
+    embeddings_index = {}
+    max_features = len(input_lang.index2word)
+    f = open(os.path.join('glove.6B/', 'glove.6B.200d.txt'))
+    for line in f:
+        values = line.split()
+        word = values[0]
+        coefs = np.asarray(values[1:], dtype='float16')
+        embeddings_index[word] = coefs
+    f.close()
+
+    embedding_matrix = np.zeros((max_features, hidden_size))
+    for word, i in input_lang.word2index.items():
+        if i >= max_features:
+            continue
+        embedding_vector = embeddings_index.get(word)
+        if embedding_vector is not None:
+            # words not found in embedding index will be all-zeros.
+            embedding_matrix[i] = embedding_vector
+    embedding_matrix = embedding_matrix
+
+    encoder1 = EncoderRNN(input_lang.n_words, hidden_size, embedding_matrix)
     attn_decoder1 = AttnDecoderRNN(hidden_size, output_lang.n_words,
                                    1, dropout_p=0.1)
 
@@ -341,13 +364,14 @@ if __name__ == '__main__':
         attn_decoder1 = attn_decoder1.cuda()
 
     # trainIters(encoder1, attn_decoder1, 10000, print_every=200)
-    #
-    # torch.save(encoder1, 'encoder')
-    # torch.save(attn_decoder1, 'decoder')
+    trainIters(encoder1, attn_decoder1, 2000, print_every=100)
+
+    torch.save(encoder1, 'test_encoder')
+    torch.save(attn_decoder1, 'test_decoder')
     ######################################################################
     #
-    encoder1 = torch.load('encoder')
-    attn_decoder1 = torch.load('decoder')
+    # encoder1 = torch.load('encoder_s2s_attention')
+    # attn_decoder1 = torch.load('decoder_s2s_attention')
 
 
     evaluateRandomly(encoder1, attn_decoder1)
