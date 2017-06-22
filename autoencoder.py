@@ -113,7 +113,7 @@ def main():
     #
     # sequence_autoencoder = Model(inputs, decoded)
     #
-    # encoder = Model(inputs, encoded)
+    # encoder_s2s_attention = Model(inputs, encoded)
     #
     # sequence_autoencoder.compile(optimizer='rmsprop', loss='categorical_crossentropy')
     # print(sequence_autoencoder.summary())

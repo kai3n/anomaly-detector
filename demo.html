@@ -13,7 +13,6 @@
     <!-- Optional theme -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
 
-    <!-- Latest compiled and minified JavaScript -->
 </head>
 <style>
 
@@ -46,32 +45,39 @@
 
 
     .container{
-        width: 90%;
+        width: 80%;
         margin: auto;
         text-align: center;
         padding-top: 20%;
         position: relative;
     }
+    button:active, button:focus{
+        box-shadow: none;
+    }
     .btn-outline {
     color: #563d7c;
     background-color: transparent;
     border-color: #563d7c;
+
     }
     .btn-outline:active,.btn-outline:focus,.btn-outline:hover{
         color:#fff;
         background-color:#563d7c;
-        border-color:#563d7c
+        border-color:#563d7c;
+
     }
     .btn-outline-inverse{
         color:#fff;
         background-color:transparent;
         border-color:#cdbfe3;
+
     }
     .btn-outline-inverse:active,.btn-outline-inverse:focus,.btn-outline-inverse:hover{
         color:#563d7c;
         text-shadow:none;
         background-color:#fff;
-        border-color:#fff
+        border-color:#fff;
+
     }
     .col-xs-4{
         padding-top: 10px;
@@ -87,7 +93,7 @@
         font-family: Verdana, Arial, Helvetica, sans-serif;
     }
     .form-control:focus,.form-control:active {
-          box-shadow: 0 0 1px 1px #563d7c;
+        box-shadow: 0 0 1px 1px #563d7c;
         border-color:#563d7c;
 
     }
@@ -102,6 +108,10 @@
       width: 40px;
       height: 30px;
       position: relative;
+    }
+    #summary {
+        padding-right: 0;
+        margin-right: 0;
     }
 </style>
 
@@ -119,7 +129,7 @@
                             <div class="col-xs-4 col-sm-4">
                                 <div class="row">
                                     <div class="col-xs-6 col-sm-6">
-                                    <button class="btn btn-lg btn-outline" type="submit">Auto Rating</button>
+                                    <button class="btn btn-lg btn-outline" type="submit" onclick="alert('Back-end: Sentiment Analyzer')">Auto Rating</button>
                                     </div>
                                     <div class="col-xs-6 col-sm-6">
                                         <div id="autoRating"></div>
@@ -129,15 +139,15 @@
                             <div class="col-xs-4 col-sm-4">
                                 <div class="row">
                                     <div class="col-xs-6 col-sm-6">
-                                    <button class="btn btn-lg btn-outline" type="submit">Auto Rating</button>
+                                        <button class="btn btn-lg btn-outline" type="submit" onclick="alert('Back-end: Anomaly Detector')">Spam Check </button>
                                     </div>
                                     <div class="col-xs-6 col-sm-6">
                                         <div id="autoSpamCheck"></div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-xs-4 col-sm-4">
-                                <button class="btn btn-lg btn-outline" type="submit">Review Summery</button>
+                            <div class="col-xs-4 col-sm-4" id="summary">
+                                <button class="btn btn-lg btn-outline" type="submit" onclick="alert('Back-end: Coming soon:)')">Review Summary </button>
                             </div>
                         </div>
 

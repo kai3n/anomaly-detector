@@ -22,9 +22,12 @@ from models import EncoderRNN, DecoderRNN, AttnDecoderRNN
 
 
 use_cuda = torch.cuda.is_available()
+print('CUDA available:', use_cuda)
 hidden_size = 200
 teacher_forcing_ratio = 0.5
-MAX_LENGTH = 10
+print_loss_avg = 0
+MIN_LENGTH = 3
+MAX_LENGTH = 15
 SOS_token = 0
 EOS_token = 1
 
@@ -89,8 +92,8 @@ def readLangs(lang1, lang2, reverse=False):
 
 
 def filterPair(p):
-    return len(p[0].split(' ')) < MAX_LENGTH and \
-           len(p[1].split(' ')) < MAX_LENGTH
+    return MIN_LENGTH < len(p[0].split(' ')) < MAX_LENGTH and \
+           MIN_LENGTH < len(p[1].split(' ')) < MAX_LENGTH
 
 
 def filterPairs(pairs):
@@ -102,6 +105,8 @@ def prepareData(lang1, lang2, reverse=False):
     print("Read %s sentence pairs" % len(pairs))
     pairs = filterPairs(pairs)
     print("Trimmed to %s sentence pairs" % len(pairs))
+    pairs = pairs[::40]
+    print("sampled to %s sentence pairs" % len(pairs))
     print("Counting words...")
     for pair in pairs:
         input_lang.addSentence(pair[0])
@@ -208,6 +213,7 @@ def timeSince(since, percent):
 
 
 def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, learning_rate=0.01):
+    global print_loss_avg
     start = time.time()
     plot_losses = []
     print_loss_total = 0  # Reset every print_every
@@ -218,6 +224,7 @@ def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, lear
     training_pairs = [variablesFromPair(random.choice(pairs))
                       for i in range(n_iters)]
     criterion = nn.NLLLoss()
+
 
     for iter in range(1, n_iters + 1):
         training_pair = training_pairs[iter - 1]
@@ -294,7 +301,7 @@ def evaluate(encoder, decoder, sentence, max_length=MAX_LENGTH):
     return decoded_words, decoder_attentions[:di + 1]
 
 
-def evaluateRandomly(encoder, decoder, n=10):
+def evaluateRandomly(encoder, decoder, n=20):
     for i in range(n):
         pair = random.choice(pairs)
         print('>', pair[0])
@@ -364,10 +371,10 @@ if __name__ == '__main__':
         attn_decoder1 = attn_decoder1.cuda()
 
     # trainIters(encoder1, attn_decoder1, 10000, print_every=200)
-    trainIters(encoder1, attn_decoder1, 2000, print_every=100)
+    trainIters(encoder1, attn_decoder1, 10000, print_every=100)
 
-    torch.save(encoder1, 'test_encoder')
-    torch.save(attn_decoder1, 'test_decoder')
+    torch.save(encoder1, 'test_encoder_'+str(print_loss_avg))
+    torch.save(attn_decoder1, 'test_decoder_'+str(print_loss_avg))
     ######################################################################
     #
     # encoder1 = torch.load('encoder_s2s_attention')
@@ -375,15 +382,15 @@ if __name__ == '__main__':
 
 
     evaluateRandomly(encoder1, attn_decoder1)
-
-    output_words, attentions = evaluate(
-        encoder1, attn_decoder1, "This is not good .")
-    # plt.matshow(attentions.numpy())
-
-
-    evaluateAndShowAttention("This sucks .")
-
-    evaluateAndShowAttention("I love you .")
-
-    evaluateAndShowAttention("I don't like this movie .")
+    #
+    # output_words, attentions = evaluate(
+    #     encoder1, attn_decoder1, "This is not good .")
+    # # plt.matshow(attentions.numpy())
+    #
+    #
+    # evaluateAndShowAttention("This sucks .")
+    #
+    # evaluateAndShowAttention("I love you .")
+    #
+    # evaluateAndShowAttention("I don't like this movie .")
 
