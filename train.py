@@ -26,6 +26,7 @@ print('CUDA available:', use_cuda)
 hidden_size = 200
 teacher_forcing_ratio = 0.5
 print_loss_avg = 0
+print_val_loss_avg = 0
 MIN_LENGTH = 3
 MAX_LENGTH = 15
 SOS_token = 0
@@ -72,7 +73,7 @@ def readLangs(lang1, lang2, reverse=False):
     print("Reading lines...")
 
     # Read the file and split into lines
-    lines = open('imdb-%s-%s.txt' % (lang1, lang2), encoding='utf-8'). \
+    lines = open('imdb500-%s-%s.txt' % (lang1, lang2), encoding='utf-8'). \
         read().strip().split('\n')
 
     # Split every line into pairs and normalize
@@ -105,8 +106,6 @@ def prepareData(lang1, lang2, reverse=False):
     print("Read %s sentence pairs" % len(pairs))
     pairs = filterPairs(pairs)
     print("Trimmed to %s sentence pairs" % len(pairs))
-    pairs = pairs[::40]
-    print("sampled to %s sentence pairs" % len(pairs))
     print("Counting words...")
     for pair in pairs:
         input_lang.addSentence(pair[0])
@@ -117,6 +116,10 @@ def prepareData(lang1, lang2, reverse=False):
     return input_lang, output_lang, pairs
 
 input_lang, output_lang, pairs = prepareData('eng', 'eng', False)
+split_divider = int(len(pairs)*0.9)
+val_pairs = pairs[split_divider:]
+pairs = pairs[:split_divider]
+
 print(random.choice(pairs))
 
 
@@ -141,7 +144,7 @@ def variablesFromPair(pair):
 
 
 def train(input_variable, target_variable, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion,
-          max_length=MAX_LENGTH):
+          max_length=MAX_LENGTH, is_validation=False):
     encoder_hidden = encoder.initHidden()
 
     encoder_optimizer.zero_grad()
@@ -190,7 +193,8 @@ def train(input_variable, target_variable, encoder, decoder, encoder_optimizer, 
             if ni == EOS_token:
                 break
 
-    loss.backward()
+    if not is_validation:
+        loss.backward()
 
     encoder_optimizer.step()
     decoder_optimizer.step()
@@ -212,40 +216,61 @@ def timeSince(since, percent):
     return '%s (- %s)' % (asMinutes(s), asMinutes(rs))
 
 
-def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, learning_rate=0.01):
+def trainIters(encoder, decoder, epoch, print_every=1000, plot_every=100, learning_rate=0.5):
     global print_loss_avg
+    global print_val_loss_avg
     start = time.time()
     plot_losses = []
+    plot_val_losses = []
     print_loss_total = 0  # Reset every print_every
     plot_loss_total = 0  # Reset every plot_every
+    print_val_loss_total = 0  # Reset every print_every
+    plot_val_loss_total = 0  # Reset every plot_every
 
-    encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate)
-    decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate)
-    training_pairs = [variablesFromPair(random.choice(pairs))
-                      for i in range(n_iters)]
+    encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate, momentum=0.9)
+    decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate, momentum=0.9)
     criterion = nn.NLLLoss()
 
+    for i in range(epoch):
+        training_pairs = [variablesFromPair(random.choice(pairs)) for _ in range(len(pairs))]
+        validating_pairs = [variablesFromPair(random.choice(val_pairs)) for _ in range(len(val_pairs))]
+        for iter in range(1, len(pairs) + 1):
+            training_pair = training_pairs[iter - 1]
+            input_variable = training_pair[0]
+            target_variable = training_pair[1]
 
-    for iter in range(1, n_iters + 1):
-        training_pair = training_pairs[iter - 1]
-        input_variable = training_pair[0]
-        target_variable = training_pair[1]
+            loss = train(input_variable, target_variable, encoder,
+                         decoder, encoder_optimizer, decoder_optimizer, criterion, is_validation=False)
+            print_loss_total += loss
+            plot_loss_total += loss
 
-        loss = train(input_variable, target_variable, encoder,
-                     decoder, encoder_optimizer, decoder_optimizer, criterion)
-        print_loss_total += loss
-        plot_loss_total += loss
+            if iter % print_every == 0:
+                if print_loss_avg < (print_loss_total / print_every):
+                    encoder_optimizer.param_groups[0]['lr'] *= 0.7
+                    decoder_optimizer.param_groups[0]['lr'] *= 0.7
+                print_loss_avg = print_loss_total / print_every
+                print_loss_total = 0
+                print('%s (%d %d%%) %.4f' % (timeSince(start, iter / len(pairs)),
+                                             iter, iter / len(pairs) * 100 * (i+1) / epoch, print_loss_avg))
 
-        if iter % print_every == 0:
-            print_loss_avg = print_loss_total / print_every
-            print_loss_total = 0
-            print('%s (%d %d%%) %.4f' % (timeSince(start, iter / n_iters),
-                                         iter, iter / n_iters * 100, print_loss_avg))
+            if iter % plot_every == 0:
+                plot_loss_avg = plot_loss_total / plot_every
+                plot_losses.append(plot_loss_avg)
+                plot_loss_total = 0
 
-        if iter % plot_every == 0:
-            plot_loss_avg = plot_loss_total / plot_every
-            plot_losses.append(plot_loss_avg)
-            plot_loss_total = 0
+        for iter in range(1, len(val_pairs) + 1):
+            validating_pair = validating_pairs[iter - 1]
+            input_variable = validating_pair[0]
+            target_variable = validating_pair[1]
+
+            val_loss = train(input_variable, target_variable, encoder,
+                         decoder, encoder_optimizer, decoder_optimizer, criterion, is_validation=True)
+            print_val_loss_total += val_loss
+            plot_val_loss_total += val_loss
+
+        print_val_loss_avg = print_val_loss_total / len(val_pairs)
+        print_val_loss_total = 0
+        print('%.4f <== Validate Loss' % (print_val_loss_avg))
 
     # showPlot(plot_losses)
 
@@ -363,15 +388,15 @@ if __name__ == '__main__':
     embedding_matrix = embedding_matrix
 
     encoder1 = EncoderRNN(input_lang.n_words, hidden_size, embedding_matrix)
-    attn_decoder1 = AttnDecoderRNN(hidden_size, output_lang.n_words,
-                                   1, dropout_p=0.1)
+    attn_decoder1 = AttnDecoderRNN(hidden_size, output_lang.n_words, 1, dropout_p=0.1)
 
     if use_cuda:
         encoder1 = encoder1.cuda()
         attn_decoder1 = attn_decoder1.cuda()
 
+    epoch = 2
     # trainIters(encoder1, attn_decoder1, 10000, print_every=200)
-    trainIters(encoder1, attn_decoder1, 10000, print_every=100)
+    trainIters(encoder1, attn_decoder1, epoch, print_every=1000)
 
     torch.save(encoder1, 'test_encoder_'+str(print_loss_avg))
     torch.save(attn_decoder1, 'test_decoder_'+str(print_loss_avg))
