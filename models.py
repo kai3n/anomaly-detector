@@ -12,7 +12,7 @@ MAX_LENGTH = 15
 
 
 class EncoderRNN(nn.Module):
-    def __init__(self, input_size, hidden_size, preloaded_weights, n_layers=1,):
+    def __init__(self, input_size, hidden_size, preloaded_weights, n_layers=1):
         super(EncoderRNN, self).__init__()
         self.n_layers = n_layers
         self.hidden_size = hidden_size
@@ -21,7 +21,7 @@ class EncoderRNN(nn.Module):
         if use_cuda:
             self.embedding = self.embedding.cuda()
         if preloaded_weights is not None:
-            self.embedding.weight = nn.Parameter(torch.Tensor(preloaded_weights)).cuda()
+            self.embedding.weight = nn.Parameter(torch.Tensor(preloaded_weights))
             # self.embedding.weight.requires_grad = False
 
         if use_cuda:
