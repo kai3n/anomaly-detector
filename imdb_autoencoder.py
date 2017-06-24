@@ -13,8 +13,8 @@ class ImdbAutoEncoder(object):
         pass
 
     def autoencoder(self, sentence):
-        encoder = torch.load('encoder_s2s_attention', map_location={'cuda:0': 'cpu'})
-        decoder = torch.load('decoder_s2s_attention', map_location={'cuda:0': 'cpu'})
+        encoder = torch.load('test_encoder_4.715040796774099', map_location={'cuda:0': 'cpu'})
+        decoder = torch.load('test_decoder_4.715040796774099', map_location={'cuda:0': 'cpu'})
 
         output_words, attentions = evaluate(
             encoder, decoder, sentence)
