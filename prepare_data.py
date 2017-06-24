@@ -1,6 +1,9 @@
 import pickle
 import os
+import re
 
+import enchant
+d = enchant.Dict("en_US")
 
 class ImdbData(object):
 
@@ -11,9 +14,8 @@ class ImdbData(object):
     @staticmethod
     def _normalize_text(text):
         """Remove impurities from the text"""
-        import re
         text = re.sub(r"<br />", "", text)
-        text = re.sub(r"[^A-Za-z0-9!?\'\`]", " ", text)
+        # text = re.sub(r"[^A-Za-z0-9!?\'\`]", " ", text)
         text = re.sub(r"it's", " it is", text)
         text = re.sub(r"that's", " that is", text)
         text = re.sub(r"\'s", " 's", text)
@@ -29,7 +31,7 @@ class ImdbData(object):
         text = re.sub(r"!", " ! ", text)
         text = re.sub(r"\?", " ? ", text)
         text = re.sub(r"\s{2,}", " ", text)
-        return text.lower()
+        return text
 
     def load_data(self):
         data_set = []
@@ -38,16 +40,30 @@ class ImdbData(object):
             for i in data_set:
                 for j in i:
                     trimmed_sentence = self._normalize_text(j)
-                    if len(trimmed_sentence) > 0:
-                        self.trimmed_sentences.append(trimmed_sentence)
+                    if 3 < len(trimmed_sentence.split()) < 50:
+                        flag = 0
+                        flag2 = 0
+                        for k in ',!?()[]-:<>{}/=+_*^%$#@~"':
+                            if trimmed_sentence.find(k) != -1:
+                                flag = 1
+                        if flag == 0:
+                            for l in trimmed_sentence.split():
+                                if not d.check(l):
+                                    flag2 = 1
+                            if flag2 == 0:
+                                if trimmed_sentence[0] == ' ':
+                                    self.trimmed_sentences.append(trimmed_sentence[1:])
+                                else:
+                                    self.trimmed_sentences.append(trimmed_sentence)
         return self
 
-    def save_to_txt(self, trimmed_sentences, filename='imdb-eng-eng.txt'):
+    def save_to_txt(self, trimmed_sentences, filename='imdb1000000-eng-eng.txt'):
         count = 0
         for sentence in trimmed_sentences:
-            print(count)
+            if count == 1000000:
+                break
             count += 1
-            self.data += sentence + '\n'
+            self.data += sentence + '.\n'
         with open(filename, 'wt') as fo:
             fo.write(self.data[:-1])
 
