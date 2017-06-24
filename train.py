@@ -216,7 +216,7 @@ def timeSince(since, percent):
     return '%s (- %s)' % (asMinutes(s), asMinutes(rs))
 
 
-def trainIters(encoder, decoder, epoch, print_every=1000, plot_every=100, learning_rate=0.5):
+def trainIters(encoder, decoder, epoch, print_every=1000, plot_every=100, learning_rate=0.1):
     global print_loss_avg
     global print_val_loss_avg
     start = time.time()
@@ -227,8 +227,8 @@ def trainIters(encoder, decoder, epoch, print_every=1000, plot_every=100, learni
     print_val_loss_total = 0  # Reset every print_every
     plot_val_loss_total = 0  # Reset every plot_every
 
-    encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate, momentum=0.9)
-    decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate, momentum=0.9)
+    encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate)
+    decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate)
     criterion = nn.NLLLoss()
 
     for i in range(epoch):
@@ -394,7 +394,7 @@ if __name__ == '__main__':
         encoder1 = encoder1.cuda()
         attn_decoder1 = attn_decoder1.cuda()
 
-    epoch = 2
+    epoch = 3
     # trainIters(encoder1, attn_decoder1, 10000, print_every=200)
     trainIters(encoder1, attn_decoder1, epoch, print_every=1000)
 
