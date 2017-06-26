@@ -51,7 +51,7 @@
         padding-top: 20%;
         position: relative;
     }
-    button:active, button:focus{
+    button:active{
         box-shadow: none;
     }
     .btn-outline {
@@ -60,7 +60,7 @@
     border-color: #563d7c;
 
     }
-    .btn-outline:active,.btn-outline:focus,.btn-outline:hover{
+    .btn-outline:active,.btn-outline:hover{
         color:#fff;
         background-color:#563d7c;
         border-color:#563d7c;
@@ -72,7 +72,7 @@
         border-color:#cdbfe3;
 
     }
-    .btn-outline-inverse:active,.btn-outline-inverse:focus,.btn-outline-inverse:hover{
+    .btn-outline-inverse:active,.btn-outline-inverse:hover{
         color:#563d7c;
         text-shadow:none;
         background-color:#fff;
@@ -112,6 +112,19 @@
     #summary {
         padding-right: 0;
         margin-right: 0;
+    }
+    .btn.active.focus,
+    .btn.active:focus,
+    .btn.focus,
+    .btn.focus:active,
+    .btn:active:focus,
+    .btn:focus {
+      outline: 0 !important;
+      outline-offset: 0  !important;
+      background-image: none  !important;
+      -webkit-box-shadow: none !important;
+      box-shadow: none  !important;
+          color: #563d7c
     }
 </style>
 
