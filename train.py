@@ -14,19 +14,17 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from torch import optim
-import torch.nn.functional as F
-# import matplotlib.pyplot as plt
-# import matplotlib.ticker as ticker
+from torch.nn.utils import clip_grad_norm
 
 from models import EncoderRNN, DecoderRNN, AttnDecoderRNN
 
 
 use_cuda = torch.cuda.is_available()
 print('CUDA available:', use_cuda)
+maximum_norm = 40.0
+print_loss_avg = 0
 hidden_size = 200
 teacher_forcing_ratio = 0.5
-print_loss_avg = 0
-print_val_loss_avg = 0
 MIN_LENGTH = 3
 MAX_LENGTH = 15
 SOS_token = 0
@@ -73,7 +71,7 @@ def readLangs(lang1, lang2, reverse=False):
     print("Reading lines...")
 
     # Read the file and split into lines
-    lines = open('imdb500-%s-%s.txt' % (lang1, lang2), encoding='utf-8'). \
+    lines = open('imdb10000-%s-%s.txt' % (lang1, lang2), encoding='utf-8'). \
         read().strip().split('\n')
 
     # Split every line into pairs and normalize
@@ -115,13 +113,6 @@ def prepareData(lang1, lang2, reverse=False):
     print(output_lang.name, output_lang.n_words)
     return input_lang, output_lang, pairs
 
-input_lang, output_lang, pairs = prepareData('eng', 'eng', False)
-split_divider = int(len(pairs)*0.9)
-val_pairs = pairs[split_divider:]
-pairs = pairs[:split_divider]
-
-print(random.choice(pairs))
-
 
 def indexesFromSentence(lang, sentence):
     return [lang.word2index[word] for word in sentence.split(' ') if lang.word2index.get(word) is not None]
@@ -144,7 +135,7 @@ def variablesFromPair(pair):
 
 
 def train(input_variable, target_variable, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion,
-          max_length=MAX_LENGTH, is_validation=False):
+          max_length=MAX_LENGTH):
     encoder_hidden = encoder.initHidden()
 
     encoder_optimizer.zero_grad()
@@ -193,8 +184,11 @@ def train(input_variable, target_variable, encoder, decoder, encoder_optimizer, 
             if ni == EOS_token:
                 break
 
-    if not is_validation:
-        loss.backward()
+    loss.backward()
+
+    # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs.
+    clip_grad_norm(encoder.parameters(), maximum_norm)
+    clip_grad_norm(decoder.parameters(), maximum_norm)
 
     encoder_optimizer.step()
     decoder_optimizer.step()
@@ -216,84 +210,49 @@ def timeSince(since, percent):
     return '%s (- %s)' % (asMinutes(s), asMinutes(rs))
 
 
-def trainIters(encoder, decoder, epoch, print_every=1000, plot_every=100, learning_rate=0.1):
-    global print_loss_avg
-    global print_val_loss_avg
+def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, learning_rate=0.01):
     start = time.time()
+    global print_loss_avg
     plot_losses = []
-    plot_val_losses = []
     print_loss_total = 0  # Reset every print_every
     plot_loss_total = 0  # Reset every plot_every
-    print_val_loss_total = 0  # Reset every print_every
-    plot_val_loss_total = 0  # Reset every plot_every
 
     encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate)
     decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate)
+    training_pairs = [variablesFromPair(random.choice(pairs))
+                      for i in range(n_iters)]
     criterion = nn.NLLLoss()
 
-    for i in range(epoch):
-        training_pairs = [variablesFromPair(random.choice(pairs)) for _ in range(len(pairs))]
-        validating_pairs = [variablesFromPair(random.choice(val_pairs)) for _ in range(len(val_pairs))]
-        for iter in range(1, len(pairs) + 1):
-            training_pair = training_pairs[iter - 1]
-            input_variable = training_pair[0]
-            target_variable = training_pair[1]
+    for iter in range(1, n_iters + 1):
+        training_pair = training_pairs[iter - 1]
+        input_variable = training_pair[0]
+        target_variable = training_pair[1]
 
-            loss = train(input_variable, target_variable, encoder,
-                         decoder, encoder_optimizer, decoder_optimizer, criterion, is_validation=False)
-            print_loss_total += loss
-            plot_loss_total += loss
+        loss = train(input_variable, target_variable, encoder,
+                     decoder, encoder_optimizer, decoder_optimizer, criterion)
+        print_loss_total += loss
+        plot_loss_total += loss
 
-            if iter % print_every == 0:
-                if print_loss_avg < (print_loss_total / print_every):
-                    encoder_optimizer.param_groups[0]['lr'] *= 0.7
-                    decoder_optimizer.param_groups[0]['lr'] *= 0.7
-                print_loss_avg = print_loss_total / print_every
-                print_loss_total = 0
-                print('%s (%d %d%%) %.4f' % (timeSince(start, iter / len(pairs)),
-                                             iter, iter / len(pairs) * 100 * (i+1) / epoch, print_loss_avg))
+        if iter % print_every == 0:
+            print_loss_avg = print_loss_total / print_every
+            print_loss_total = 0
+            print('%s (%d %d%%) %.4f' % (timeSince(start, iter / n_iters),
+                                         iter, iter / n_iters * 100, print_loss_avg))
 
-            if iter % plot_every == 0:
-                plot_loss_avg = plot_loss_total / plot_every
-                plot_losses.append(plot_loss_avg)
-                plot_loss_total = 0
-
-        for iter in range(1, len(val_pairs) + 1):
-            validating_pair = validating_pairs[iter - 1]
-            input_variable = validating_pair[0]
-            target_variable = validating_pair[1]
-
-            val_loss = train(input_variable, target_variable, encoder,
-                         decoder, encoder_optimizer, decoder_optimizer, criterion, is_validation=True)
-            print_val_loss_total += val_loss
-            plot_val_loss_total += val_loss
-
-        print_val_loss_avg = print_val_loss_total / len(val_pairs)
-        print_val_loss_total = 0
-        print('%.4f <== Validate Loss' % (print_val_loss_avg))
-
-    # showPlot(plot_losses)
+        if iter % plot_every == 0:
+            plot_loss_avg = plot_loss_total / plot_every
+            plot_losses.append(plot_loss_avg)
+            plot_loss_total = 0
 
 
-# import matplotlib.pyplot as plt
-# import matplotlib.ticker as ticker
-
-
-# def showPlot(points):
-#     plt.figure()
-#     fig, ax = plt.subplots()
-#     # this locator puts ticks at regular intervals
-#     loc = ticker.MultipleLocator(base=0.2)
-#     ax.yaxis.set_major_locator(loc)
-#     plt.plot(points)
-
-def evaluate(encoder, decoder, sentence, max_length=MAX_LENGTH):
+def evaluate(encoder, decoder, sentence, input_lang, output_lang, max_length=MAX_LENGTH):
     input_variable = variableFromSentence(input_lang, sentence)
     input_length = input_variable.size()[0]
     encoder_hidden = encoder.initHidden()
 
     encoder_outputs = Variable(torch.zeros(max_length, encoder.hidden_size))
     encoder_outputs = encoder_outputs.cuda() if use_cuda else encoder_outputs
+    loss = 0
 
     for ei in range(input_length):
         encoder_output, encoder_hidden = encoder(input_variable[ei],
@@ -302,18 +261,20 @@ def evaluate(encoder, decoder, sentence, max_length=MAX_LENGTH):
 
     decoder_input = Variable(torch.LongTensor([[SOS_token]]))  # SOS
     decoder_input = decoder_input.cuda() if use_cuda else decoder_input
-
+    criterion = nn.NLLLoss()
     decoder_hidden = encoder_hidden
 
     decoded_words = []
     decoder_attentions = torch.zeros(max_length, max_length)
 
-    for di in range(max_length):
+    for di in range(input_length):
         decoder_output, decoder_hidden, decoder_attention = decoder(
             decoder_input, decoder_hidden, encoder_output, encoder_outputs)
         decoder_attentions[di] = decoder_attention.data
         topv, topi = decoder_output.data.topk(1)
         ni = topi[0][0]
+
+        loss += criterion(decoder_output[0], input_variable[di])
         if ni == EOS_token:
             decoded_words.append('<EOS>')
             break
@@ -323,7 +284,7 @@ def evaluate(encoder, decoder, sentence, max_length=MAX_LENGTH):
         decoder_input = Variable(torch.LongTensor([[ni]]))
         decoder_input = decoder_input.cuda() if use_cuda else decoder_input
 
-    return decoded_words, decoder_attentions[:di + 1]
+    return decoded_words, decoder_attentions[:di + 1], loss.data.numpy()
 
 
 def evaluateRandomly(encoder, decoder, n=20):
@@ -331,40 +292,15 @@ def evaluateRandomly(encoder, decoder, n=20):
         pair = random.choice(pairs)
         print('>', pair[0])
         print('=', pair[1])
-        output_words, attentions = evaluate(encoder, decoder, pair[0])
+        output_words, attentions, loss = evaluate(encoder, decoder, pair[0])
         output_sentence = ' '.join(output_words)
         print('<', output_sentence)
         print('')
 
 
-def evaluateAndShowAttention(input_sentence):
-    output_words, attentions = evaluate(
-        encoder1, attn_decoder1, input_sentence)
-    print('input =', input_sentence)
-    print('output =', ' '.join(output_words))
-    #showAttention(input_sentence, output_words, attentions)
-
-# def showAttention(input_sentence, output_words, attentions):
-#     # Set up figure with colorbar
-#     fig = plt.figure()
-#     ax = fig.add_subplot(111)
-#     cax = ax.matshow(attentions.numpy(), cmap='bone')
-#     fig.colorbar(cax)
-#
-#     # Set up axes
-#     ax.set_xticklabels([''] + input_sentence.split(' ') +
-#                        ['<EOS>'], rotation=90)
-#     ax.set_yticklabels([''] + output_words)
-#
-#     # Show label at every tick
-#     ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
-#     ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
-#
-#     plt.show()
-
-
-
 if __name__ == '__main__':
+
+    input_lang, output_lang, pairs = prepareData('eng', 'eng', False)
 
     # pre-trained word embedding
     embeddings_index = {}
@@ -387,35 +323,24 @@ if __name__ == '__main__':
             embedding_matrix[i] = embedding_vector
     embedding_matrix = embedding_matrix
 
-    encoder1 = EncoderRNN(input_lang.n_words, hidden_size, embedding_matrix)
-    attn_decoder1 = AttnDecoderRNN(hidden_size, output_lang.n_words, 1, dropout_p=0.1)
+    imdb_encoder = EncoderRNN(input_lang.n_words, hidden_size, embedding_matrix)
+    imdb_decoder = AttnDecoderRNN(hidden_size, output_lang.n_words,
+                                   1, dropout_p=0.1)
 
     if use_cuda:
-        encoder1 = encoder1.cuda()
-        attn_decoder1 = attn_decoder1.cuda()
+        imdb_encoder = imdb_encoder.cuda()
+        imdb_decoder = imdb_decoder.cuda()
 
-    epoch = 3
-    # trainIters(encoder1, attn_decoder1, 10000, print_every=200)
-    trainIters(encoder1, attn_decoder1, epoch, print_every=1000)
+    trainIters(imdb_encoder, imdb_decoder, 1000, print_every=100)
 
-    torch.save(encoder1, 'test_encoder_'+str(print_loss_avg))
-    torch.save(attn_decoder1, 'test_decoder_'+str(print_loss_avg))
-    ######################################################################
-    #
+    # save model
+    torch.save(imdb_encoder, 'test_encoder_imdb500_glove_'+str(print_loss_avg) + '_' + str(maximum_norm))
+    torch.save(imdb_decoder, 'test_decoder_imdb500_glove_'+str(print_loss_avg) + '_' + str(maximum_norm))
+
+
+    # load model
     # encoder1 = torch.load('encoder_s2s_attention')
     # attn_decoder1 = torch.load('decoder_s2s_attention')
 
 
-    evaluateRandomly(encoder1, attn_decoder1)
-    #
-    # output_words, attentions = evaluate(
-    #     encoder1, attn_decoder1, "This is not good .")
-    # # plt.matshow(attentions.numpy())
-    #
-    #
-    # evaluateAndShowAttention("This sucks .")
-    #
-    # evaluateAndShowAttention("I love you .")
-    #
-    # evaluateAndShowAttention("I don't like this movie .")
-
+    evaluateRandomly(imdb_encoder, imdb_decoder)
