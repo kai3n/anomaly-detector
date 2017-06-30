@@ -4,8 +4,12 @@ import re
 
 import sys
 if sys.version_info[0] == 2:
+    # check typo error
     import enchant
     d = enchant.Dict("en_US")
+
+MIN_LENGTH = 3
+MAX_LENGTH = 50
 
 class ImdbData(object):
 
@@ -42,17 +46,17 @@ class ImdbData(object):
             for i in data_set:
                 for j in i:
                     trimmed_sentence = self._normalize_text(j)
-                    if 3 < len(trimmed_sentence.split()) < 50:
+                    if MIN_LENGTH < len(trimmed_sentence.split()) < MAX_LENGTH:
                         flag = 0
                         flag2 = 0
                         for k in ',!?()[]-:<>{}/=+_*^%$#@~"':
                             if trimmed_sentence.find(k) != -1:
                                 flag = 1
                         if flag == 0:
-                            for l in trimmed_sentence.split():
-                                if sys.version_info[0] == 2:
-                                    if not d.check(l):
-                                        flag2 = 1
+                            if sys.version_info[0] == 2:
+                                for l in trimmed_sentence.split():
+                                        if not d.check(l):
+                                            flag2 = 1
                             if flag2 == 0:
                                 if trimmed_sentence[0] == ' ':
                                     self.trimmed_sentences.append(trimmed_sentence[1:])

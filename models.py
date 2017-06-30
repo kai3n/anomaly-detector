@@ -8,7 +8,6 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 
 use_cuda = torch.cuda.is_available()
-MAX_LENGTH = 15
 
 
 class EncoderRNN(nn.Module):
@@ -72,7 +71,7 @@ class DecoderRNN(nn.Module):
 
 
 class AttnDecoderRNN(nn.Module):
-    def __init__(self, hidden_size, output_size, n_layers=1, dropout_p=0.1, max_length=MAX_LENGTH):
+    def __init__(self, hidden_size, output_size, n_layers=1, dropout_p=0.1, max_length=15):
         super(AttnDecoderRNN, self).__init__()
         self.hidden_size = hidden_size
         self.output_size = output_size
