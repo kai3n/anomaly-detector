@@ -6,8 +6,8 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 
 from models import EncoderRNN, DecoderRNN, AttnDecoderRNN
-from train import evaluate
-import train
+from train import evaluate, predict, normalizeString
+
 
 class ImdbAutoEncoder(object):
     def __init__(self):
@@ -19,7 +19,11 @@ class ImdbAutoEncoder(object):
 
         output_words, attentions = evaluate(
             encoder, decoder, sentence)
-        return output_words
+
+        loss = predict(
+            encoder, decoder, sentence)
+
+        return output_words, loss.data.numpy()
 
 
 if __name__ == '__main__':
@@ -27,8 +31,11 @@ if __name__ == '__main__':
     criterion = nn.NLLLoss()
     while True:
         text = input()
-        text = text[:15]
-        decoded_text = imdb_autoencoder.autoencoder(text)
+        text = normalizeString(text)
+        print('Trimmed text: ', text)
+        decoded_text, decoded_loss = imdb_autoencoder.autoencoder(text)
         anomaly_predict_val = 1.0-(len(set(text.split()) - set(decoded_text)))/len(text.split())
-        print(decoded_text)
+        print('Original text sequence: ', text.split())
+        print('Decoded text sequence: ', decoded_text)
+        print('Decoded text loss: ', decoded_loss)
         print('Probability of genuine movie review: {}%'.format(anomaly_predict_val*100))
