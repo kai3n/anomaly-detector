@@ -2,8 +2,10 @@ import pickle
 import os
 import re
 
-import enchant
-d = enchant.Dict("en_US")
+import sys
+if sys.version_info[0] == 2:
+    import enchant
+    d = enchant.Dict("en_US")
 
 class ImdbData(object):
 
@@ -48,8 +50,9 @@ class ImdbData(object):
                                 flag = 1
                         if flag == 0:
                             for l in trimmed_sentence.split():
-                                if not d.check(l):
-                                    flag2 = 1
+                                if sys.version_info[0] == 2:
+                                    if not d.check(l):
+                                        flag2 = 1
                             if flag2 == 0:
                                 if trimmed_sentence[0] == ' ':
                                     self.trimmed_sentences.append(trimmed_sentence[1:])
