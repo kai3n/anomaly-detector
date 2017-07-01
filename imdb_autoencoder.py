@@ -3,8 +3,6 @@ from __future__ import unicode_literals, print_function, division
 import torch
 import torch.nn as nn
 import numpy as np
-from torch.autograd import Variable
-import torch.nn.functional as F
 
 from models import EncoderRNN, DecoderRNN, AttnDecoderRNN
 from train import evaluate, normalizeString, prepareData

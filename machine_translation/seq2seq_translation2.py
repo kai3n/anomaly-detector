@@ -36,7 +36,7 @@ another. An encoder network condenses an input sequence into a vector,
 and a decoder network unfolds that vector into a new sequence.
 
 .. figure:: /_static/img/seq-seq-images/seq2seq.png
-   :alt: 
+   :alt:
 
 To improve upon this model we'll use an `attention
 mechanism <https://arxiv.org/abs/1409.0473>`__, which lets the decoder
@@ -189,6 +189,7 @@ def unicodeToAscii(s):
         if unicodedata.category(c) != 'Mn'
     )
 
+
 # Lowercase, trim, and remove non-letter characters
 
 
@@ -210,7 +211,7 @@ def readLangs(lang1, lang2, reverse=False):
     print("Reading lines...")
 
     # Read the file and split into lines
-    lines = open('data/imdb100000-%s-%s.txt' % (lang1, lang2), encoding='utf-8').\
+    lines = open('data/imdb100000-%s-%s.txt' % (lang1, lang2), encoding='utf-8'). \
         read().strip().split('\n')
 
     # Split every line into pairs and normalize
@@ -359,6 +360,7 @@ class EncoderRNN(nn.Module):
         else:
             return result
 
+
 ######################################################################
 # The Decoder
 # -----------
@@ -412,6 +414,7 @@ class DecoderRNN(nn.Module):
             return result.cuda()
         else:
             return result
+
 
 ######################################################################
 # I encourage you to train and observe the results of this model, but to
@@ -560,9 +563,11 @@ def variablesFromPair(pair):
 #
 
 teacher_forcing_ratio = 0.5
-maximum_norm = 40.0
+maximum_norm = 2.0
 
-def train(input_variable, target_variable, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion, max_length=MAX_LENGTH):
+
+def train(input_variable, target_variable, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion,
+          max_length=MAX_LENGTH):
     encoder_hidden = encoder.initHidden()
 
     encoder_optimizer.zero_grad()
@@ -570,10 +575,10 @@ def train(input_variable, target_variable, encoder, decoder, encoder_optimizer, 
 
     input_length = input_variable.size()[0]
     target_length = target_variable.size()[0]
-    
+
     encoder_outputs = Variable(torch.zeros(max_length, encoder.hidden_size))
     encoder_outputs = encoder_outputs.cuda() if use_cuda else encoder_outputs
-   
+
     loss = 0
 
     for ei in range(input_length):
@@ -583,7 +588,7 @@ def train(input_variable, target_variable, encoder, decoder, encoder_optimizer, 
 
     decoder_input = Variable(torch.LongTensor([[SOS_token]]))
     decoder_input = decoder_input.cuda() if use_cuda else decoder_input
-    
+
     decoder_hidden = encoder_hidden
 
     use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
@@ -603,10 +608,10 @@ def train(input_variable, target_variable, encoder, decoder, encoder_optimizer, 
                 decoder_input, decoder_hidden, encoder_output, encoder_outputs)
             topv, topi = decoder_output.data.topk(1)
             ni = topi[0][0]
-            
+
             decoder_input = Variable(torch.LongTensor([[ni]]))
             decoder_input = decoder_input.cuda() if use_cuda else decoder_input
-            
+
             loss += criterion(decoder_output[0], target_variable[di])
             if ni == EOS_token:
                 break
@@ -673,7 +678,7 @@ def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, lear
         training_pair = training_pairs[iter - 1]
         input_variable = training_pair[0]
         target_variable = training_pair[1]
- 
+
         loss = train(input_variable, target_variable, encoder,
                      decoder, encoder_optimizer, decoder_optimizer, criterion)
         print_loss_total += loss
@@ -690,7 +695,7 @@ def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, lear
             plot_losses.append(plot_loss_avg)
             plot_loss_total = 0
 
-    # showPlot(plot_losses)
+            # showPlot(plot_losses)
 
 
 ######################################################################
@@ -758,7 +763,7 @@ def evaluate(encoder, decoder, sentence, max_length=MAX_LENGTH):
             break
         else:
             decoded_words.append(output_lang.index2word[ni])
-        
+
         decoder_input = Variable(torch.LongTensor([[ni]]))
         decoder_input = decoder_input.cuda() if use_cuda else decoder_input
 
@@ -794,7 +799,7 @@ def evaluateRandomly(encoder, decoder, n=20):
 # single GRU layer. After about 40 minutes on a MacBook CPU we'll get some
 # reasonable results.
 #
-# .. Note:: 
+# .. Note::
 #    If you run this notebook you can train, interrupt the kernel,
 #    evaluate, and continue training later. Comment out the lines where the
 #    encoder and decoder are initialized and run ``trainIters`` again.
@@ -811,8 +816,8 @@ if use_cuda:
 
 trainIters(encoder1, attn_decoder1, 2000000, print_every=1000)
 
-torch.save(encoder1, 'test_encoder_imdb100000_'+str(print_loss_avg) + '_' + str(maximum_norm))
-torch.save(attn_decoder1, 'test_decoder_imdb100000_'+str(print_loss_avg) + '_' + str(maximum_norm))
+torch.save(encoder1, 'test_encoder_imdb100000_' + str(print_loss_avg) + '_' + str(maximum_norm))
+torch.save(attn_decoder1, 'test_decoder_imdb100000_' + str(print_loss_avg) + '_' + str(maximum_norm))
 ######################################################################
 #
 
@@ -868,6 +873,7 @@ def evaluateAndShowAttention(input_sentence):
     print('input =', input_sentence)
     print('output =', ' '.join(output_words))
     # showAttention(input_sentence, output_words, attentions)
+
 #
 #
 # evaluateAndShowAttention("elle a cinq ans de moins que moi .")

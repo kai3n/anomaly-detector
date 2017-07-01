@@ -15,13 +15,16 @@ import torch.nn as nn
 from torch.autograd import Variable
 from torch import optim
 from torch.nn.utils import clip_grad_norm
+import torch.nn.functional as F
+# import matplotlib.pyplot as plt
+# import matplotlib.ticker as ticker
 
 from models import EncoderRNN, DecoderRNN, AttnDecoderRNN
 
 
 use_cuda = torch.cuda.is_available()
 print('CUDA available:', use_cuda)
-maximum_norm = 40.0
+maximum_norm = 2.0
 print_loss_avg = 0
 hidden_size = 200
 teacher_forcing_ratio = 0.5
@@ -36,7 +39,7 @@ class Lang:
         self.name = name
         self.word2index = {}
         self.word2count = {}
-        self.index2word = {0: "SOS", 1: "EOS", 2: "OOV"}
+        self.index2word = {0: "SOS", 1: "EOS"}
         self.n_words = 2  # Count SOS and EOS
 
     def addSentence(self, sentence):
@@ -71,7 +74,7 @@ def readLangs(lang1, lang2, reverse=False):
     print("Reading lines...")
 
     # Read the file and split into lines
-    lines = open('data/imdb10000-%s-%s.txt' % (lang1, lang2), encoding='utf-8'). \
+    lines = open('imdb100000-%s-%s.txt' % (lang1, lang2), encoding='utf-8'). \
         read().strip().split('\n')
 
     # Split every line into pairs and normalize
@@ -94,7 +97,6 @@ def filterPair(p):
     return MIN_LENGTH < len(p[0].split(' ')) < MAX_LENGTH and \
            MIN_LENGTH < len(p[1].split(' ')) < MAX_LENGTH
 
-
 def filterPairs(pairs):
     return [pair for pair in pairs if filterPair(pair)]
 
@@ -113,16 +115,12 @@ def prepareData(lang1, lang2, reverse=False):
     print(output_lang.name, output_lang.n_words)
     return input_lang, output_lang, pairs
 
+input_lang, output_lang, pairs = prepareData('eng', 'eng', False)
+print(random.choice(pairs))
+
 
 def indexesFromSentence(lang, sentence):
-    indexes = []
-    for word in sentence.split(' '):
-        if lang.word2index.get(word) is not None:
-            indexes.append(lang.word2index[word])
-        else:
-            indexes.append(2)  # OOV
-    return indexes
-    # return [lang.word2index[word] for word in sentence.split(' ') if lang.word2index.get(word) is not None]
+    return [lang.word2index[word] for word in sentence.split(' ') if lang.word2index.get(word) is not None]
 
 
 def variableFromSentence(lang, sentence):
@@ -251,15 +249,28 @@ def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, lear
             plot_losses.append(plot_loss_avg)
             plot_loss_total = 0
 
+    # showPlot(plot_losses)
 
-def evaluate(encoder, decoder, sentence, input_lang, output_lang, max_length=MAX_LENGTH):
+
+# import matplotlib.pyplot as plt
+# import matplotlib.ticker as ticker
+
+
+# def showPlot(points):
+#     plt.figure()
+#     fig, ax = plt.subplots()
+#     # this locator puts ticks at regular intervals
+#     loc = ticker.MultipleLocator(base=0.2)
+#     ax.yaxis.set_major_locator(loc)
+#     plt.plot(points)
+
+def evaluate(encoder, decoder, sentence, max_length=MAX_LENGTH):
     input_variable = variableFromSentence(input_lang, sentence)
     input_length = input_variable.size()[0]
     encoder_hidden = encoder.initHidden()
 
     encoder_outputs = Variable(torch.zeros(max_length, encoder.hidden_size))
     encoder_outputs = encoder_outputs.cuda() if use_cuda else encoder_outputs
-    loss = 0
 
     for ei in range(input_length):
         encoder_output, encoder_hidden = encoder(input_variable[ei],
@@ -268,20 +279,18 @@ def evaluate(encoder, decoder, sentence, input_lang, output_lang, max_length=MAX
 
     decoder_input = Variable(torch.LongTensor([[SOS_token]]))  # SOS
     decoder_input = decoder_input.cuda() if use_cuda else decoder_input
-    criterion = nn.NLLLoss()
+
     decoder_hidden = encoder_hidden
 
     decoded_words = []
     decoder_attentions = torch.zeros(max_length, max_length)
 
-    for di in range(input_length):
+    for di in range(max_length):
         decoder_output, decoder_hidden, decoder_attention = decoder(
             decoder_input, decoder_hidden, encoder_output, encoder_outputs)
         decoder_attentions[di] = decoder_attention.data
         topv, topi = decoder_output.data.topk(1)
         ni = topi[0][0]
-
-        loss += criterion(decoder_output[0], input_variable[di])
         if ni == EOS_token:
             decoded_words.append('<EOS>')
             break
@@ -291,7 +300,7 @@ def evaluate(encoder, decoder, sentence, input_lang, output_lang, max_length=MAX
         decoder_input = Variable(torch.LongTensor([[ni]]))
         decoder_input = decoder_input.cuda() if use_cuda else decoder_input
 
-    return decoded_words, decoder_attentions[:di + 1], loss.data.numpy()
+    return decoded_words, decoder_attentions[:di + 1]
 
 
 def evaluateRandomly(encoder, decoder, n=20):
@@ -299,15 +308,40 @@ def evaluateRandomly(encoder, decoder, n=20):
         pair = random.choice(pairs)
         print('>', pair[0])
         print('=', pair[1])
-        output_words, attentions, loss = evaluate(encoder, decoder, pair[0])
+        output_words, attentions = evaluate(encoder, decoder, pair[0])
         output_sentence = ' '.join(output_words)
         print('<', output_sentence)
         print('')
 
 
-if __name__ == '__main__':
+def evaluateAndShowAttention(input_sentence):
+    output_words, attentions = evaluate(
+        encoder1, attn_decoder1, input_sentence)
+    print('input =', input_sentence)
+    print('output =', ' '.join(output_words))
+    #showAttention(input_sentence, output_words, attentions)
 
-    input_lang, output_lang, pairs = prepareData('eng', 'eng', False)
+# def showAttention(input_sentence, output_words, attentions):
+#     # Set up figure with colorbar
+#     fig = plt.figure()
+#     ax = fig.add_subplot(111)
+#     cax = ax.matshow(attentions.numpy(), cmap='bone')
+#     fig.colorbar(cax)
+#
+#     # Set up axes
+#     ax.set_xticklabels([''] + input_sentence.split(' ') +
+#                        ['<EOS>'], rotation=90)
+#     ax.set_yticklabels([''] + output_words)
+#
+#     # Show label at every tick
+#     ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
+#     ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+#
+#     plt.show()
+
+
+
+if __name__ == '__main__':
 
     # pre-trained word embedding
     embeddings_index = {}
@@ -330,24 +364,34 @@ if __name__ == '__main__':
             embedding_matrix[i] = embedding_vector
     embedding_matrix = embedding_matrix
 
-    imdb_encoder = EncoderRNN(input_lang.n_words, hidden_size, embedding_matrix)
-    imdb_decoder = AttnDecoderRNN(hidden_size, output_lang.n_words,
+    encoder1 = EncoderRNN(input_lang.n_words, hidden_size, embedding_matrix)
+    attn_decoder1 = AttnDecoderRNN(hidden_size, output_lang.n_words,
                                    1, dropout_p=0.1)
 
     if use_cuda:
-        imdb_encoder = imdb_encoder.cuda()
-        imdb_decoder = imdb_decoder.cuda()
+        encoder1 = encoder1.cuda()
+        attn_decoder1 = attn_decoder1.cuda()
 
-    trainIters(imdb_encoder, imdb_decoder, 1000, print_every=100)
+    # trainIters(encoder1, attn_decoder1, 10000, print_every=200)
+    trainIters(encoder1, attn_decoder1, 2000000, print_every=1000)
 
-    # save model
-    torch.save(imdb_encoder, 'test_encoder_imdb500_glove_'+str(print_loss_avg) + '_' + str(maximum_norm))
-    torch.save(imdb_decoder, 'test_decoder_imdb500_glove_'+str(print_loss_avg) + '_' + str(maximum_norm))
-
-
-    # load model
+    torch.save(encoder1, 'test_encoder_imdb100000_glove_'+str(print_loss_avg) + '_' + str(maximum_norm))
+    torch.save(attn_decoder1, 'test_decoder_imdb100000_glove_'+str(print_loss_avg) + '_' + str(maximum_norm))
+    ######################################################################
+    #
     # encoder1 = torch.load('encoder_s2s_attention')
     # attn_decoder1 = torch.load('decoder_s2s_attention')
 
 
-    evaluateRandomly(imdb_encoder, imdb_decoder)
+    evaluateRandomly(encoder1, attn_decoder1)
+
+    output_words, attentions = evaluate(
+        encoder1, attn_decoder1, "This is not good .")
+    # plt.matshow(attentions.numpy())
+
+
+    evaluateAndShowAttention("This sucks .")
+
+    evaluateAndShowAttention("I love you .")
+
+    evaluateAndShowAttention("I don't like this movie .")

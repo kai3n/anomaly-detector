@@ -19,10 +19,9 @@
     body {
         margin: auto;
         font-family: Verdana, Arial, Helvetica, sans-serif;
-        background: url("bg_blur.jpg");
+        background: url({{ url_for('static', filename='./img/bg_blur.jpg') }});
         width: 1000px;
         height: 900px;
-        background: url("bg_blur.jpg");
         animation: backgroundScroll1 10s linear infinite alternate;
         animation: backgroundScroll2 10s linear infinite alternate;
         transform: translateZ(0);
@@ -136,7 +135,7 @@
                 <div class="panel panel-default">
                     <div class="panel-body">
                         <form accept-charset="UTF-8" action="" method="POST">
-                            <textarea class="form-control counted" name="message" placeholder="Type in your moview review" rows="5" style="margin-bottom:10px;"></textarea>
+                            <textarea id="review_text" class="form-control counted" name="message" placeholder="Type in your moview review" rows="5" style="margin-bottom:10px;"></textarea>
 
                         </form>
                         <div class="row lead evaluation">
@@ -153,7 +152,7 @@
                             <div class="col-xs-4 col-sm-4">
                                 <div class="row">
                                     <div class="col-xs-6 col-sm-6">
-                                        <button class="btn btn-lg btn-outline" type="submit" onclick="alert('Back-end: Anomaly Detector')">Spam Check </button>
+                                        <button class="btn btn-lg btn-outline" type="submit" onclick="alert('Back-end: Anomaly Detector')">Credibility </button>
                                     </div>
                                     <div class="col-xs-6 col-sm-6">
                                         <div id="autoSpamCheck"></div>
@@ -205,7 +204,7 @@
         bar.text.style.fontFamily = '"Raleway", Helvetica, sans-serif';
         bar.text.style.fontSize = '2rem';
 
-        bar.animate(0.43);  // Number from 0.0 to 1.0
+        bar.animate(0.5);  // Number from 0.0 to 1.0
 
         var bar2 = new ProgressBar.SemiCircle(autoSpamCheck, {
           strokeWidth: 6,
@@ -237,7 +236,26 @@
         bar2.text.style.fontFamily = '"Raleway", Helvetica, sans-serif';
         bar2.text.style.fontSize = '2rem';
 
-        bar2.animate(0.87);  // Number from 0.0 to 1.0
+        bar2.animate(0.5);  // Number from 0.0 to 1.0
+
+
+       var text = $("#review_text").val()
+       var sentences_len = 1
+       var sentences = text.split(/[\\.!?]/);
+        $("#review_text").on("keyup change paste", function(e){
+            var text = $("#review_text").val();
+            sentences = text.split(/[\\.!?]/);
+            if (sentences_len != sentences.length){
+                sentences_len = sentences.length
+                $.post("http://127.0.0.1:8888", {
+                      review_text: $("#review_text").val()
+                  },
+                  function(prob, status){
+                      console.log(prob)
+                      bar2.animate(parseFloat(prob));  // Number from 0.0 to 1.0
+                  });
+            }
+          });
 
     </script>
 </html>
