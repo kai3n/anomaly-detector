@@ -55,6 +55,7 @@ def predict_with_ajax():
     return str(total_anomaly_prob/len(review_texts.split('.')))
 
 
+
 @app.route('/', methods=['GET'])
 def main():
     return render_template('demo.html')
@@ -69,3 +70,4 @@ if __name__ == '__main__':
         host="0.0.0.0",
         port=int("8888")
     )
+
