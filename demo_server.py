@@ -28,27 +28,6 @@ class ImdbAutoEncoder(object):
         return output_words, loss
 
 
-if __name__ == '__main__':
-
-    input_lang, output_lang, pairs = prepareData('eng', 'eng', False)
-    imdb_autoencoder = ImdbAutoEncoder(input_lang, output_lang)
-    criterion = nn.NLLLoss()
-    while True:
-        text = input()
-        text = normalizeString(text)
-        text = ' '.join(text.split()[:14])
-        print('Trimmed text: ', text)
-        decoded_text, decoded_loss = imdb_autoencoder.autoencoder(text)
-        anomaly_prob = sech(decoded_loss / len(text.split()))
-        print('Original text sequence: ', text.split())
-        print('Decoded text sequence: ', decoded_text)
-        print('Decoded text total loss: ', decoded_loss)
-        print('Decoded text avg loss: ', decoded_loss / len(text.split()))
-        print('Probability of genuine movie review: {}%'.format(anomaly_prob*100))
-        print('================================================================================')
-        print('Judgement of Imdb Anomaly Detector: ', 'Posiive' if anomaly_prob < 0.2 else 'Negative')
-
-
 # Initialize the Flask application
 print(" - Starting up application")
 
@@ -60,14 +39,20 @@ CORS(app)
 @app.route('/', methods=['POST'])
 def predict_with_ajax():
     """Returns prediction as string format"""
-    review_text = request.form['review_text']
-
-    review_text = normalizeString(review_text)
-    review_text = ' '.join(review_text.split()[:14])
-    decoded_text, decoded_loss = imdb_autoencoder.autoencoder(review_text)
-    anomaly_prob = sech(decoded_loss / len(text.split()))
-    print(anomaly_prob)
-    return str(anomaly_prob)
+    total_anomaly_prob = 0
+    review_texts = request.form['review_text']
+    for review_text in review_texts.split('.'):
+        review_text += '.'
+        review_text = normalizeString(review_text)
+        review_text = ' '.join(review_text.split()[:14])
+        decoded_text, decoded_loss = imdb_autoencoder.autoencoder(review_text)
+        print('Original text sequence: ', review_text.split())
+        print('Decoded text sequence: ', decoded_text)
+        anomaly_prob = sech(decoded_loss / len(review_text.split()))
+        print(anomaly_prob)
+        print(type(anomaly_prob))
+        total_anomaly_prob += anomaly_prob[0]
+    return str(total_anomaly_prob/len(review_texts.split('.')))
 
 
 @app.route('/', methods=['GET'])
