@@ -29,8 +29,8 @@ print_loss_avg = 0
 print_val_loss_avg = 0
 hidden_size = 200
 teacher_forcing_ratio = 0.5
-MIN_LENGTH = 3
-MAX_LENGTH = 15
+MIN_LENGTH = 2
+MAX_LENGTH = 17
 SOS_token = 0
 EOS_token = 1
 
@@ -68,6 +68,21 @@ def normalizeString(s):
     s = unicodeToAscii(s.lower().strip())
     s = re.sub(r"([.!?])", r" \1", s)
     s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
+    s = re.sub(r"it's", " it is", s)
+    s = re.sub(r"i'm", " i am", s)
+    s = re.sub(r"that's", " that is", s)
+    s = re.sub(r"\'s", " 's", s)
+    s = re.sub(r"\'ve", " have", s)
+    s = re.sub(r"won't", " will not", s)
+    s = re.sub(r"don't", " do not", s)
+    s = re.sub(r"doesn't", " does not", s)
+    s = re.sub(r"can't", " can not", s)
+    s = re.sub(r"cannot", " can not", s)
+    s = re.sub(r"n\'t", " n\'t", s)
+    s = re.sub(r"\'re", " are", s)
+    s = re.sub(r"\'d", " would", s)
+    s = re.sub(r"\'ll", " will", s)
+    s = re.sub(r"\s{2,}", " ", s)
     return s
 
 
@@ -75,7 +90,7 @@ def readLangs(lang1, lang2, reverse=False):
     print("Reading lines...")
 
     # Read the file and split into lines
-    lines = open('data/imdb500-%s-%s.txt' % (lang1, lang2), encoding='utf-8'). \
+    lines = open('data/imdb2000-%s-%s.txt' % (lang1, lang2), encoding='utf-8'). \
         read().strip().split('\n')
 
     # Split every line into pairs and normalize
@@ -240,8 +255,8 @@ def showPlot(points, val_points, epoch):
     plt.title('Training Graph for Anomaly Detector')
     plt.xlabel('Sentences')
     plt.ylabel('SGD Loss')
-    plt.savefig('test.png')
-    plt.show()
+    plt.savefig('train_result.png')
+    # plt.show()
 
 
 def trainIters(encoder, decoder, n_iters, print_every=500, plot_every=500, learning_rate=0.01):
@@ -386,24 +401,29 @@ if __name__ == '__main__':
             embedding_matrix[i] = embedding_vector
     embedding_matrix = embedding_matrix
 
+
     imdb_encoder = EncoderRNN(input_lang.n_words, hidden_size, embedding_matrix)
     imdb_decoder = AttnDecoderRNN(hidden_size, output_lang.n_words,
                                    1, dropout_p=0.1)
+    # load model
+    imdb_encoder = torch.load('test_encoder_imdb2000_glove_3.824624256855085_40.0')
+    imdb_decoder = torch.load('test_decoder_imdb2000_glove_3.824624256855085_40.0')
 
     if use_cuda:
         imdb_encoder = imdb_encoder.cuda()
         imdb_decoder = imdb_decoder.cuda()
 
-    trainIters(imdb_encoder, imdb_decoder, 5000, print_every=500)
+
+    trainIters(imdb_encoder, imdb_decoder, 10000, print_every=100, plot_every=100, learning_rate=0.01)
+
+    # # save model
+    # torch.save(imdb_encoder, 'test_encoder_imdb100000_max16_glove_'+str(print_loss_avg) + '_' + str(maximum_norm))
+    # torch.save(imdb_decoder, 'test_decoder_imdb100000_max16_glove_'+str(print_loss_avg) + '_' + str(maximum_norm))
 
     # save model
-    torch.save(imdb_encoder, 'test_encoder_imdb500_glove_'+str(print_loss_avg) + '_' + str(maximum_norm))
-    torch.save(imdb_decoder, 'test_decoder_imdb500_glove_'+str(print_loss_avg) + '_' + str(maximum_norm))
+    torch.save(imdb_encoder, 'test_encoder_imdb2000_glove_' + str(print_loss_avg) + '_' + str(maximum_norm))
+    torch.save(imdb_decoder, 'test_decoder_imdb2000_glove_' + str(print_loss_avg) + '_' + str(maximum_norm))
 
-
-    # load model
-    # encoder1 = torch.load('encoder_s2s_attention')
-    # attn_decoder1 = torch.load('decoder_s2s_attention')
 
 
     # evaluateRandomly(imdb_encoder, imdb_decoder)
