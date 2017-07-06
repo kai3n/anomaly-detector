@@ -8,6 +8,7 @@ import random
 import time
 import math
 import os
+import sys
 
 import numpy as np
 import torch
@@ -18,13 +19,12 @@ from torch.nn.utils import clip_grad_norm
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
-
 from models import EncoderRNN, DecoderRNN, AttnDecoderRNN
 
 
 use_cuda = torch.cuda.is_available()
 print('CUDA available:', use_cuda)
-maximum_norm = 40.0
+maximum_norm = 2.0
 print_loss_avg = 0
 print_val_loss_avg = 0
 hidden_size = 200
@@ -90,7 +90,7 @@ def readLangs(lang1, lang2, reverse=False):
     print("Reading lines...")
 
     # Read the file and split into lines
-    lines = open('data/imdb2000-%s-%s.txt' % (lang1, lang2), encoding='utf-8'). \
+    lines = open('data/imdb100000_max16-%s-%s.txt' % (lang1, lang2), encoding='utf-8'). \
         read().strip().split('\n')
 
     # Split every line into pairs and normalize
@@ -255,7 +255,7 @@ def showPlot(points, val_points, epoch):
     plt.title('Training Graph for Anomaly Detector')
     plt.xlabel('Sentences')
     plt.ylabel('SGD Loss')
-    plt.savefig('train_result.png')
+    plt.savefig('train_result_{}.png'.format(str(time.time())))
     # plt.show()
 
 
@@ -401,13 +401,14 @@ if __name__ == '__main__':
             embedding_matrix[i] = embedding_vector
     embedding_matrix = embedding_matrix
 
-
-    imdb_encoder = EncoderRNN(input_lang.n_words, hidden_size, embedding_matrix)
-    imdb_decoder = AttnDecoderRNN(hidden_size, output_lang.n_words,
-                                   1, dropout_p=0.1)
-    # load model
-    imdb_encoder = torch.load('test_encoder_imdb2000_glove_3.824624256855085_40.0')
-    imdb_decoder = torch.load('test_decoder_imdb2000_glove_3.824624256855085_40.0')
+    # load model($python3 train.py encoder decoder)
+    if len(sys.argv) == 3:
+        imdb_encoder = torch.load(sys.argv[1])
+        imdb_decoder = torch.load(sys.argv[2])
+    else:
+        imdb_encoder = EncoderRNN(input_lang.n_words, hidden_size, embedding_matrix)
+        imdb_decoder = AttnDecoderRNN(hidden_size, output_lang.n_words,
+                                      1, dropout_p=0.1)
 
     if use_cuda:
         imdb_encoder = imdb_encoder.cuda()
@@ -416,14 +417,6 @@ if __name__ == '__main__':
 
     trainIters(imdb_encoder, imdb_decoder, 10000, print_every=100, plot_every=100, learning_rate=0.01)
 
-    # # save model
-    # torch.save(imdb_encoder, 'test_encoder_imdb100000_max16_glove_'+str(print_loss_avg) + '_' + str(maximum_norm))
-    # torch.save(imdb_decoder, 'test_decoder_imdb100000_max16_glove_'+str(print_loss_avg) + '_' + str(maximum_norm))
-
     # save model
-    torch.save(imdb_encoder, 'test_encoder_imdb2000_glove_' + str(print_loss_avg) + '_' + str(maximum_norm))
-    torch.save(imdb_decoder, 'test_decoder_imdb2000_glove_' + str(print_loss_avg) + '_' + str(maximum_norm))
-
-
-
-    # evaluateRandomly(imdb_encoder, imdb_decoder)
+    torch.save(imdb_encoder, 'encoder_imdb100000_max16_glove_'+str(print_loss_avg) + '_' + str(maximum_norm))
+    torch.save(imdb_decoder, 'decoder_imdb100000_max16_glove_'+str(print_loss_avg) + '_' + str(maximum_norm))
