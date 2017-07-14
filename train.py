@@ -68,8 +68,9 @@ def unicodeToAscii(s):
 def normalizeString(s):
     s = unicodeToAscii(s.lower().strip())
     s = re.sub(r"([.!?])", r" \1", s)
-    # s = re.sub(r"[^a-zA-Z.!?']+", r" ", s)
+    s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
     s = re.sub(r"it's", " it is", s)
+    s = re.sub(r"i'm", " i am", s)
     s = re.sub(r"that's", " that is", s)
     s = re.sub(r"\'s", " 's", s)
     s = re.sub(r"\'ve", " have", s)
@@ -322,7 +323,7 @@ def trainIters(encoder, decoder, n_iters, print_every=500, plot_every=500, learn
             plot_losses.append(plot_loss_avg)
             plot_loss_total = 0
 
-    showPlot(plot_losses, plot_val_losses, epoch)
+    # showPlot(plot_losses, plot_val_losses, epoch)
 
 
 def evaluate(encoder, decoder, sentence, input_lang, output_lang, max_length=MAX_LENGTH):
@@ -405,8 +406,12 @@ if __name__ == '__main__':
 
     # load model($python3 train.py encoder decoder)
     if len(sys.argv) == 3:
-        imdb_encoder = torch.load(sys.argv[1])
-        imdb_decoder = torch.load(sys.argv[2])
+        if use_cuda:
+            imdb_encoder = torch.load(sys.argv[1])
+            imdb_decoder = torch.load(sys.argv[2])
+        else:
+            imdb_encoder = torch.load(sys.argv[1], map_location={'cuda:0': 'cpu'})
+            imdb_decoder = torch.load(sys.argv[2], map_location={'cuda:0': 'cpu'})
     else:
         imdb_encoder = EncoderRNN(input_lang.n_words, hidden_size, embedding_matrix)
         imdb_decoder = AttnDecoderRNN(hidden_size, output_lang.n_words,
@@ -417,7 +422,7 @@ if __name__ == '__main__':
         imdb_decoder = imdb_decoder.cuda()
 
 
-    trainIters(imdb_encoder, imdb_decoder, 70000, print_every=100, plot_every=100, learning_rate=0.01)
+    trainIters(imdb_encoder, imdb_decoder, 1500000, print_every=100, plot_every=100, learning_rate=0.01)
 
     # save model
     torch.save(imdb_encoder, 'trained_model/encoder_imdb100000_max16_glove_'+str(print_loss_avg) + '_' + str(maximum_norm))
