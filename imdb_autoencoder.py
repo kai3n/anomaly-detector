@@ -17,8 +17,8 @@ class ImdbAutoEncoder(object):
         self.output_lang = output_lang
 
     def autoencoder(self, sentence):
-        encoder = torch.load('test_encoder_imdb100000_0.3082789914441499_2.0', map_location={'cuda:0': 'cpu'})
-        decoder = torch.load('test_decoder_imdb100000_0.3082789914441499_2.0', map_location={'cuda:0': 'cpu'})
+        encoder = torch.load('encoder_imdb100000_max16_glove_0.3367996503444526_2.0', map_location={'cuda:0': 'cpu'})
+        decoder = torch.load('decoder_imdb100000_max16_glove_0.3367996503444526_2.0', map_location={'cuda:0': 'cpu'})
 
         output_words, _, loss = evaluate(
             encoder, decoder, sentence, self.input_lang, self.output_lang)
@@ -30,15 +30,15 @@ def val_test(textfile):
     total_loss = 0
     for line in lines[:100]:
         line = normalizeString(line)
-        line = ' '.join(line.split()[:14])
+        line = ' '.join(line.split()[:17])
         decoded_text, decoded_loss = imdb_autoencoder.autoencoder(line)
         total_loss += decoded_loss
     return total_loss / len(lines)
 
 def show_val_test():
     performance = []
-    for i in range(4, 15):
-        performance.append(val_test('imdb_len_{}.txt'.format(str(i))))
+    for i in range(4, 17):
+        performance.append(val_test('data/imdb_len_{}.txt'.format(str(i))))
 
     import matplotlib.pyplot as plt
     plt.rcdefaults()
@@ -46,7 +46,7 @@ def show_val_test():
     import matplotlib.pyplot as plt
 
     objects = ('Len 4', 'Len 5', 'Len 6', 'Len 7', 'Len 8', 'Len 9', 'Len 10', 'Len 11', 'Len 12',
-               'Len 13', 'Len 14')
+               'Len 13', 'Len 14', 'Len 15', 'Len 16')
     y_pos = np.arange(len(objects))
 
     plt.bar(y_pos, performance, align='center', alpha=0.5)
@@ -64,9 +64,9 @@ if __name__ == '__main__':
 
     criterion = nn.NLLLoss()
     while True:
-        text = input()
+        text = input('Input:')
         text = normalizeString(text)
-        text = ' '.join(text.split()[:14])
+        text = ' '.join(text.split()[:17])
         print('Trimmed text: ', text)
         decoded_text, decoded_loss = imdb_autoencoder.autoencoder(text)
         anomaly_prob = sech(decoded_loss / len(text.split()))

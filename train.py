@@ -33,6 +33,7 @@ MIN_LENGTH = 2
 MAX_LENGTH = 17
 SOS_token = 0
 EOS_token = 1
+log = []
 
 
 class Lang:
@@ -67,9 +68,8 @@ def unicodeToAscii(s):
 def normalizeString(s):
     s = unicodeToAscii(s.lower().strip())
     s = re.sub(r"([.!?])", r" \1", s)
-    s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
+    # s = re.sub(r"[^a-zA-Z.!?']+", r" ", s)
     s = re.sub(r"it's", " it is", s)
-    s = re.sub(r"i'm", " i am", s)
     s = re.sub(r"that's", " that is", s)
     s = re.sub(r"\'s", " 's", s)
     s = re.sub(r"\'ve", " have", s)
@@ -255,7 +255,7 @@ def showPlot(points, val_points, epoch):
     plt.title('Training Graph for Anomaly Detector')
     plt.xlabel('Sentences')
     plt.ylabel('SGD Loss')
-    plt.savefig('train_result_{}.png'.format(str(time.time())))
+    plt.savefig('log/train_result_{}.png'.format(str(time.time())))
     # plt.show()
 
 
@@ -295,6 +295,8 @@ def trainIters(encoder, decoder, n_iters, print_every=500, plot_every=500, learn
             print_loss_total = 0
             print('%s (%d %d%%) %.4f' % (timeSince(start, iter / n_iters),
                                          iter, iter / n_iters * 100, print_loss_avg))
+            log.append('%s (%d %d%%) %.4f\n' % (timeSince(start, iter / n_iters),
+                                         iter, iter / n_iters * 100, print_loss_avg))
 
             validating_pairs = [variablesFromPair(random.choice(val_pairs))
                                 for _ in range(print_every // 9)]
@@ -310,7 +312,7 @@ def trainIters(encoder, decoder, n_iters, print_every=500, plot_every=500, learn
             print_val_loss_avg = print_val_loss_total / (print_every // 9)
             print_val_loss_total = 0
             print('==========Val_Loss: %.4f==========' % (print_val_loss_avg))
-
+            log.append('==========Val_Loss: %.4f==========\n' % (print_val_loss_avg))
             plot_val_loss_avg = plot_val_loss_total / (print_every // 9)
             plot_val_losses.append(plot_val_loss_avg)
             plot_val_loss_total = 0
@@ -415,8 +417,10 @@ if __name__ == '__main__':
         imdb_decoder = imdb_decoder.cuda()
 
 
-    trainIters(imdb_encoder, imdb_decoder, 10000, print_every=100, plot_every=100, learning_rate=0.01)
+    trainIters(imdb_encoder, imdb_decoder, 70000, print_every=100, plot_every=100, learning_rate=0.01)
 
     # save model
-    torch.save(imdb_encoder, 'encoder_imdb100000_max16_glove_'+str(print_loss_avg) + '_' + str(maximum_norm))
-    torch.save(imdb_decoder, 'decoder_imdb100000_max16_glove_'+str(print_loss_avg) + '_' + str(maximum_norm))
+    torch.save(imdb_encoder, 'trained_model/encoder_imdb100000_max16_glove_'+str(print_loss_avg) + '_' + str(maximum_norm))
+    torch.save(imdb_decoder, 'trained_model/decoder_imdb100000_max16_glove_'+str(print_loss_avg) + '_' + str(maximum_norm))
+    with open('log/log_{}.txt'.format(str(time.time())), 'wt') as fo:
+        fo.write(' '.join(log))

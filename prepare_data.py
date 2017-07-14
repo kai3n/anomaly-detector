@@ -15,23 +15,23 @@ class ImdbData(object):
 
     def __init__(self):
         self.data = ''
-        self.data4 = ''
-        self.data5 = ''
-        self.data6 = ''
-        self.data7 = ''
-        self.data8 = ''
-        self.data9 = ''
-        self.data10 = ''
-        self.data11= ''
-        self.data12 = ''
-        self.data13 = ''
-        self.data14 = ''
-        self.data15 = ''
-        self.data16 = ''
-        self.data17 = ''
-        self.data18 = ''
-        self.data19 = ''
-        self.data20 = ''
+        # self.data4 = ''
+        # self.data5 = ''
+        # self.data6 = ''
+        # self.data7 = ''
+        # self.data8 = ''
+        # self.data9 = ''
+        # self.data10 = ''
+        # self.data11= ''
+        # self.data12 = ''
+        # self.data13 = ''
+        # self.data14 = ''
+        # self.data15 = ''
+        # self.data16 = ''
+        # self.data17 = ''
+        # self.data18 = ''
+        # self.data19 = ''
+        # self.data20 = ''
 
         self.trimmed_sentences = []
 
@@ -82,48 +82,47 @@ class ImdbData(object):
                                     self.trimmed_sentences.append(trimmed_sentence)
         return self
 
-    # def save_to_txt(self, trimmed_sentences, filename='imdb1000000-eng-eng.txt'):
-    #     count = 0
-    #     for sentence in trimmed_sentences:
-    #         if count == 1000000:
-    #             break
-    #         count += 1
-    #         self.data += sentence + '.\n'
-    #     with open(filename, 'wt') as fo:
-    #         fo.write(self.data[:-1])
+    def save_to_txt(self, trimmed_sentences, filename='imdb100000_max16-eng-eng.txt'):
+        for sentence in trimmed_sentences[:300000]:
+            if len(self.data.split('\n')) == 100001:
+                break
+            if 2 < len(sentence.split()) < 17:
+                self.data += sentence + '.\n'
+        with open(filename, 'wt') as fo:
+            fo.write(self.data[:-1])
 
-    def save_to_txt(self, trimmed_sentences, filename='imdb1000000-eng-eng.txt'):
-        for sentence in trimmed_sentences[100000:300000]:
-            if len(sentence.split()) == 15:
-                self.data15 += sentence + '.\n'
-                if len(self.data15.split('\n')) == 1001:
-                    with open('imdb_len_15.txt', 'wt') as fo:
-                        fo.write(self.data15[:-1])
-            if len(sentence.split()) == 16:
-                self.data16 += sentence + '.\n'
-                if len(self.data16.split('\n')) == 1001:
-                    with open('imdb_len_16.txt', 'wt') as fo:
-                        fo.write(self.data16[:-1])
-            if len(sentence.split()) == 17:
-                self.data17 += sentence + '.\n'
-                if len(self.data17.split('\n')) == 1001:
-                    with open('imdb_len_17.txt', 'wt') as fo:
-                        fo.write(self.data17[:-1])
-            if len(sentence.split()) == 18:
-                self.data18 += sentence + '.\n'
-                if len(self.data18.split('\n')) == 1001:
-                    with open('imdb_len_18.txt', 'wt') as fo:
-                        fo.write(self.data18[:-1])
-            if len(sentence.split()) == 19:
-                self.data19 += sentence + '.\n'
-                if len(self.data19.split('\n')) == 1001:
-                    with open('imdb_len_19.txt', 'wt') as fo:
-                        fo.write(self.data19[:-1])
-            if len(sentence.split()) == 20:
-                self.data20 += sentence + '.\n'
-                if len(self.data20.split('\n')) == 1001:
-                    with open('imdb_len_20.txt', 'wt') as fo:
-                        fo.write(self.data20[:-1])
+    # def save_to_txt(self, trimmed_sentences, filename='imdb1000000-eng-eng.txt'):
+    #     for sentence in trimmed_sentences[100000:300000]:
+    #         if len(sentence.split()) == 15:
+    #             self.data15 += sentence + '.\n'
+    #             if len(self.data15.split('\n')) == 1001:
+    #                 with open('imdb_len_15.txt', 'wt') as fo:
+    #                     fo.write(self.data15[:-1])
+    #         if len(sentence.split()) == 16:
+    #             self.data16 += sentence + '.\n'
+    #             if len(self.data16.split('\n')) == 1001:
+    #                 with open('imdb_len_16.txt', 'wt') as fo:
+    #                     fo.write(self.data16[:-1])
+    #         if len(sentence.split()) == 17:
+    #             self.data17 += sentence + '.\n'
+    #             if len(self.data17.split('\n')) == 1001:
+    #                 with open('imdb_len_17.txt', 'wt') as fo:
+    #                     fo.write(self.data17[:-1])
+    #         if len(sentence.split()) == 18:
+    #             self.data18 += sentence + '.\n'
+    #             if len(self.data18.split('\n')) == 1001:
+    #                 with open('imdb_len_18.txt', 'wt') as fo:
+    #                     fo.write(self.data18[:-1])
+    #         if len(sentence.split()) == 19:
+    #             self.data19 += sentence + '.\n'
+    #             if len(self.data19.split('\n')) == 1001:
+    #                 with open('imdb_len_19.txt', 'wt') as fo:
+    #                     fo.write(self.data19[:-1])
+    #         if len(sentence.split()) == 20:
+    #             self.data20 += sentence + '.\n'
+    #             if len(self.data20.split('\n')) == 1001:
+    #                 with open('imdb_len_20.txt', 'wt') as fo:
+    #                     fo.write(self.data20[:-1])
 
     def save_to_pkl(self, trimmed_sentences, filename='imdb-eng-eng.pkl'):
         for sentence in trimmed_sentences:
